@@ -13,3 +13,8 @@ services:
       - ./devices.json:/app/devices.json
       - ./aliases.json:/app/aliases.json
       - ./.tradfri_psk.json:/app/.tradfri_psk.json:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

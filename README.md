@@ -176,6 +176,10 @@ mcporter call tradfri.set_color_temp name=餐桌燈 direction=warm
 | `TELEGRAM_CHAT_ID` | | — | Telegram Chat ID（選填） |
 | `TRADFRI_POLL_INTERVAL` | | `30` | OBSERVE 中斷後重試間隔（秒）|
 
+### Docker Log Rotation
+
+Container log 自動 rotate（`max-size: 10m`，保留 3 個檔案，上限 30MB）。所有 MCP tool call 會記錄在 log 中（如 `control_by_name(name='客廳', state=True)`），方便除錯但不會無限成長。
+
 ---
 
 ## OpenClaw 整合
