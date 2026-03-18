@@ -40,6 +40,23 @@ case "$1" in
     fi
     ACTION="$2"
 
+    # 別名 mapping（模型常用的口語 → aliases.json 裡的正式名稱）
+    case "$NAME" in
+      電視牆|電視牆燈) NAME="客廳電視牆" ;;
+      沙發) NAME="沙發燈" ;;
+      光條) NAME="玄關光條" ;;
+    esac
+
+    # 「全部」→ 逐個執行所有名稱
+    if [ "$NAME" = "全部" ] || [ "$NAME" = "全部燈" ] || [ "$NAME" = "所有燈" ]; then
+      NAMES="客廳 客廳電視牆 沙發燈 客廳聚光燈 客廳閱讀燈 客廳展示燈 玄關 玄關畫廊 玄關電箱 玄關主燈 融蠟燈 餐廳 餐桌燈 餐廳軌道燈 主臥室 次臥室 走道燈 衣櫥燈 立燈 小夜燈"
+      shift 1  # remove NAME
+      for N in $NAMES; do
+        "$0" "$N" "$@" 2>&1
+      done
+      exit 0
+    fi
+
     case "$ACTION" in
       開|開燈|on)
         exec mcporter call tradfri.control_by_name "name=$NAME" state=true
