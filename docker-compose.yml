@@ -3,7 +3,8 @@ services:
     build: .
     container_name: kc_tradfri_mcp
     restart: unless-stopped
-    network_mode: host          # 需要直接訪問 LAN gateway
+    ports:
+      - "8765:8765"
     env_file:
       - .env
     environment:
