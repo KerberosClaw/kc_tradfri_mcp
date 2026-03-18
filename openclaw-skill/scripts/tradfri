@@ -1,0 +1,74 @@
+#!/bin/bash
+# tradfri — IKEA TRADFRI 燈控 wrapper
+# 簡化 mcporter 呼叫，讓 8B LLM 能可靠地 exec
+#
+# 用法：
+#   tradfri 客廳 開
+#   tradfri 客廳 關
+#   tradfri 客廳 亮度 100
+#   tradfri 客廳 色溫 暖
+#   tradfri 客廳 色溫 冷
+#   tradfri 查詢 客廳
+#   tradfri 列表
+
+set -euo pipefail
+
+if [ $# -lt 1 ]; then
+  echo "用法: tradfri <名稱> <動作> [參數]"
+  echo "動作: 開, 關, 亮度 <0-254>, 色溫 暖/冷, 查詢, 列表"
+  exit 1
+fi
+
+case "$1" in
+  列表|list)
+    exec mcporter call tradfri.list_aliases
+    ;;
+  查詢|status)
+    if [ $# -lt 2 ]; then
+      echo "用法: tradfri 查詢 <名稱>"
+      exit 1
+    fi
+    exec mcporter call tradfri.get_status "name=$2"
+    ;;
+  *)
+    # 第一個參數是名稱，第二個是動作
+    NAME="$1"
+    if [ $# -lt 2 ]; then
+      echo "用法: tradfri <名稱> <動作>"
+      exit 1
+    fi
+    ACTION="$2"
+
+    case "$ACTION" in
+      開|開燈|on)
+        exec mcporter call tradfri.control_by_name "name=$NAME" state=true
+        ;;
+      關|關燈|off)
+        exec mcporter call tradfri.control_by_name "name=$NAME" state=false
+        ;;
+      亮度|brightness)
+        if [ $# -lt 3 ]; then
+          echo "用法: tradfri $NAME 亮度 <0-254>"
+          exit 1
+        fi
+        exec mcporter call tradfri.control_by_name "name=$NAME" "brightness=$3"
+        ;;
+      色溫)
+        if [ $# -lt 3 ]; then
+          echo "用法: tradfri $NAME 色溫 暖/冷"
+          exit 1
+        fi
+        case "$3" in
+          暖|warm) exec mcporter call tradfri.set_color_temp "name=$NAME" direction=warm ;;
+          冷|cool) exec mcporter call tradfri.set_color_temp "name=$NAME" direction=cool ;;
+          *) echo "色溫方向：暖 或 冷"; exit 1 ;;
+        esac
+        ;;
+      *)
+        echo "未知動作: $ACTION"
+        echo "支援: 開, 關, 亮度 <值>, 色溫 暖/冷"
+        exit 1
+        ;;
+    esac
+    ;;
+esac

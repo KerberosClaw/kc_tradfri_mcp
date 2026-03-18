@@ -8,12 +8,21 @@ tradfri-mcp — FastMCP HTTP server
 """
 import asyncio
 import json
+import logging
 import urllib.request
 import urllib.parse
 from contextlib import asynccontextmanager
 from typing import Optional, Literal
 
 from fastmcp import FastMCP
+
+# tool call logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+_log = logging.getLogger("mcp-tool")
 
 import coap_client as coap
 from config import (
@@ -187,6 +196,7 @@ async def control_group(
         payload["5851"] = max(0, min(254, brightness))
     if not payload:
         return "未指定任何操作（state 或 brightness 至少提供一個）"
+    _log.info("control_group(group_id=%s, state=%s, brightness=%s)", group_id, state, brightness)
     await coap.coap_put(f"/15004/{group_id}", payload)
     parts = []
     if state is not None:      parts.append("開" if state else "關")
@@ -219,6 +229,7 @@ async def control_device(
         light_payload["5851"] = max(0, min(254, brightness))
     if not light_payload:
         return "未指定任何操作"
+    _log.info("control_device(device_id=%s, state=%s, brightness=%s)", device_id, state, brightness)
     await coap.coap_put(f"/15001/{device_id}", {"3311": [light_payload]})
     parts = []
     if state is not None:      parts.append("開" if state else "關")
@@ -249,6 +260,7 @@ async def control_by_name(
         control_by_name(name="沙發燈", brightness=100)
         control_by_name(name="玄關", state=True)
     """
+    _log.info("control_by_name(name=%r, state=%s, brightness=%s)", name, state, brightness)
     target = resolve(name)
     if target is None:
         return f"找不到「{name}」，請用 list_aliases 確認名稱"
@@ -316,6 +328,7 @@ async def set_color_temp(
         set_color_temp(name="沙發燈", mireds=370)
         set_color_temp(name="餐桌燈", direction="cool", step=100)
     """
+    _log.info("set_color_temp(name=%r, direction=%s, mireds=%s, step=%s)", name, direction, mireds, step)
     if mireds is None and direction is None:
         return "請指定 mireds 或 direction"
 
@@ -385,6 +398,7 @@ async def set_color(
         name:  alias 名稱（如「客廳」、「沙發燈」）
         color: red/green/blue/orange/yellow/warm_white/cool_white/purple/pink
     """
+    _log.info("set_color(name=%r, color=%s)", name, color)
     target = resolve(name)
     if target is None:
         return f"找不到「{name}」，請用 list_aliases 確認名稱"
@@ -430,6 +444,7 @@ async def activate_scene(group_id: int, scene_id: int) -> str:
         group_id: 群組 ID
         scene_id: 場景 ID（可從 list_devices 取得）
     """
+    _log.info("activate_scene(group_id=%s, scene_id=%s)", group_id, scene_id)
     await coap.coap_put(f"/15004/{group_id}", {"9039": scene_id})
     return f"群組 {group_id} 場景 {scene_id} 已觸發 ✓"
 
@@ -452,6 +467,7 @@ async def get_status(
         device_id: 設備 ID
         group_id:  群組 ID
     """
+    _log.info("get_status(name=%r, device_id=%s, group_id=%s)", name, device_id, group_id)
     if name is not None:
         target = resolve(name)
         if target is None:
@@ -490,6 +506,7 @@ async def list_devices() -> str:
     列出所有設備、群組與場景（含 alias 對應）。
     資料來自 devices.json（快取），如需更新請呼叫 refresh_devices。
     """
+    _log.info("list_devices()")
     data    = load_devices()
     aliases = load_aliases()
 
@@ -529,6 +546,7 @@ async def list_aliases() -> str:
         device      → 單一設備
         device_list → 多個設備的集合
     """
+    _log.info("list_aliases()")
     aliases = load_aliases()
     summary = {
         name: target.get("type", "unknown")
@@ -544,6 +562,7 @@ async def refresh_devices() -> str:
     重新掃描 gateway，更新 devices.json。
     若拓撲有變動（新增/移除設備或群組），回傳 diff。
     """
+    _log.info("refresh_devices()")
     old_data = load_devices()
 
     device_ids = await coap.coap_get("/15001")
@@ -594,6 +613,7 @@ async def find_by_name(name: str) -> str:
     Args:
         name: 中文名稱、alias 或 gateway 原始名稱
     """
+    _log.info("find_by_name(name=%r)", name)
     result = resolve(name)
     if result is None:
         data = load_devices()
@@ -615,6 +635,7 @@ async def send_notification(message: str) -> str:
     Args:
         message: 要傳送的文字訊息
     """
+    _log.info("send_notification(message=%r)", message[:100])
     await _tg_notify(message)
     return "已發送" if (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID) else "未設定 Telegram，略過通知"
 
