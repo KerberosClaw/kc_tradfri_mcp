@@ -195,11 +195,13 @@ mcporter call tradfri.set_color_temp name=客廳 direction=warm
 解法是 **SearXNG 模式**：建一個 wrapper script，把複雜度藏起來，讓 LLM 只需 exec 簡單的中文指令：
 
 ```bash
-# 這對 8B 模型夠簡單
 tradfri 客廳 開
 tradfri 客廳 關
-tradfri 客廳 亮度 100
+tradfri 客廳 亮度 80       # 百分比 0-100
 tradfri 客廳 色溫 暖
+tradfri 餐桌燈 顏色 紅     # RGB 燈泡：紅/綠/藍/橙/黃/紫/粉
+tradfri 查詢 客廳
+tradfri 列表
 ```
 
 ### 安裝步驟
@@ -209,27 +211,36 @@ tradfri 客廳 色溫 暖
 **1. 安裝 OpenClaw skill**
 
 ```bash
-# 從 repo 建立 symlink 到 OpenClaw workspace
-ln -s $(pwd)/openclaw-skill ~/.openclaw/workspace/skills/tradfri
+# 複製到 OpenClaw workspace（不能用 symlink，OpenClaw 會拒絕跨目錄的 realPath）
+cp -r openclaw-skill ~/.openclaw/workspace/skills/tradfri
 ```
 
 **2. 安裝 wrapper script**
 
 ```bash
-# 讓 tradfri 指令在 PATH 中可用
 ln -s $(pwd)/openclaw-skill/scripts/tradfri /opt/homebrew/bin/tradfri
 # Linux：ln -s $(pwd)/openclaw-skill/scripts/tradfri /usr/local/bin/tradfri
 ```
 
-**3. 修改 OpenClaw systemPrompt**
+**3. 在 AGENTS.md 加入燈控指令**
 
-在 `~/.openclaw/openclaw.json` 的 systemPrompt 中加入（取代原有的 IKEA TRADFRI 段落）：
+在 `~/.openclaw/workspace/AGENTS.md` 加入（**不是 systemPrompt，不是 SKILL.md**）：
 
+```markdown
+## IKEA TRADFRI 燈控
+
+收到燈控請求 → 立即 exec `tradfri` 指令，不解釋不確認。
+
+tradfri 客廳電視牆 開
+tradfri 客廳 關
+tradfri 客廳 亮度 80
+tradfri 餐桌燈 色溫 暖
+tradfri 餐桌燈 顏色 紅
+tradfri 查詢 沙發燈
+tradfri 列表
 ```
-收到燈控請求時，用 exec 執行 tradfri <名稱> <動作>，不解釋不確認。
-動作：開、關、亮度 <0-254>、色溫 暖/冷、查詢。
-不知道名稱時先執行 tradfri 列表。
-```
+
+> **重要：** 只有 AGENTS.md 的內容會被完整注入到 LLM context。systemPrompt 和 SKILL.md 不可靠。
 
 **4. 重啟 OpenClaw gateway**
 
@@ -287,6 +298,18 @@ services:
 曾經嘗試用 `asyncio.Semaphore(1)` + 2 秒延遲來序列化 OBSERVE 初始化，認為 20 個並發 GET 會壓垮 gateway。實測證明 **不需要**：gateway 可以處理並發 OBSERVE GET，問題根源是上面的 context reset bug，不是並發量。
 
 移除 semaphore 後 OBSERVE 初始化時間從 ~40 秒降到幾秒。
+
+### OpenClaw skill 不能用 symlink
+
+`~/.openclaw/workspace/skills/tradfri` 如果是 symlink 指向 repo 目錄，OpenClaw 會拒絕載入：`Skipping skill path that resolves outside its configured root.`。必須用 `cp -r` 複製實際檔案。
+
+### OpenClaw 只有 AGENTS.md 會被完整注入 LLM context
+
+`openclaw.json` 的 `systemPrompt` 被放在 system prompt 末尾，容易被截斷或被模型忽略。`SKILL.md` 只有 name/description 被引用，內容不注入。只有 `AGENTS.md` 的內容完整出現在 LLM 看到的 system prompt 中。所有關鍵指令（燈控、搜尋）都要寫在 AGENTS.md。
+
+### aliases.json 的 `_comment` 會導致 list_devices crash
+
+`aliases.json` 裡的 `"_comment": "..."` 是 string，`list_devices` 裡 `target.get("type")` 會 crash。修法：跳過非 dict 的 entries。
 
 ### 8B LLM 無法可靠 exec 複雜 mcporter 語法
 
