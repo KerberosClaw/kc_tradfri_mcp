@@ -14,7 +14,7 @@ try:
 except ImportError:
     pass
 
-GATEWAY_IP   = os.environ.get("TRADFRI_GATEWAY_IP", "192.168.x.x")
+GATEWAY_IP   = os.environ["TRADFRI_GATEWAY_IP"]
 MCP_HOST     = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT     = int(os.environ.get("MCP_PORT", "8765"))
 PSK_FILE     = Path(os.environ.get("PSK_FILE",     BASE_DIR / ".tradfri_psk.json"))
@@ -23,7 +23,7 @@ ALIASES_FILE = Path(os.environ.get("ALIASES_FILE", BASE_DIR / "aliases.json"))
 
 # Telegram 推播通知（選填，未設定時靜默略過）
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")   # 格式：123456:AAABBB...
-TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID")     # 格式：數字 ID（如 123456789）
+TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID")     # 格式：數字 ID
 
 # CoAP OBSERVE 重試間隔（秒）：當 OBSERVE 訂閱中斷後，等待多久重新訂閱。
 # 預設 30 秒。此值不影響通知即時性（通知由 gateway push，非輪詢）。
