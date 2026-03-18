@@ -142,6 +142,7 @@ async def _observe_alias(name: str, target: dict) -> None:
 
     path, extract = _obs_path_extractor(target)
     if path is None:
+        _log.info("OBSERVE skip %s (no path)", name)
         return
 
     uri = f"coaps://{GATEWAY_IP}{path}"
@@ -149,6 +150,7 @@ async def _observe_alias(name: str, target: dict) -> None:
 
     while True:
         try:
+            _log.info("OBSERVE %s subscribing %s", name, path)
             ctx = await coap.get_ctx()
             req = aiocoap.Message(code=aiocoap.GET, uri=uri, observe=0)
             pr  = ctx.request(req)
@@ -156,17 +158,20 @@ async def _observe_alias(name: str, target: dict) -> None:
             initial = await asyncio.wait_for(pr.response, timeout=30)
             raw = json.loads(initial.payload)
             prev_state = extract(raw)
+            _log.info("OBSERVE %s baseline state=%s", name, prev_state)
 
             async for response in pr.observation:
                 raw   = json.loads(response.payload)
                 state = extract(raw)
                 if prev_state is not None and state != prev_state:
+                    _log.info("OBSERVE %s changed %s→%s, notifying", name, prev_state, state)
                     _queue(name, state)
                 prev_state = state
 
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as e:
+            _log.warning("OBSERVE %s error: %s, retry in %ss", name, e, TRADFRI_POLL_INTERVAL or 30)
             coap.reset_ctx()
             await asyncio.sleep(TRADFRI_POLL_INTERVAL or 30)
 
