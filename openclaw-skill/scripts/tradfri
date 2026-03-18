@@ -8,6 +8,7 @@
 #   tradfri 客廳 亮度 100
 #   tradfri 客廳 色溫 暖
 #   tradfri 客廳 色溫 冷
+#   tradfri 餐桌燈 顏色 紅
 #   tradfri 查詢 客廳
 #   tradfri 列表
 
@@ -56,7 +57,7 @@ case "$1" in
         if [ "$VAL" -le 100 ] 2>/dev/null; then
           VAL=$(( VAL * 254 / 100 ))
         fi
-        exec mcporter call tradfri.control_by_name "name=$NAME" "brightness=$VAL"
+        exec mcporter call tradfri.control_by_name "name=$NAME" state=true "brightness=$VAL"
         ;;
       色溫)
         if [ $# -lt 3 ]; then
@@ -69,9 +70,29 @@ case "$1" in
           *) echo "色溫方向：暖 或 冷"; exit 1 ;;
         esac
         ;;
+      顏色|color)
+        if [ $# -lt 3 ]; then
+          echo "用法: tradfri $NAME 顏色 紅/綠/藍/橙/黃/紫/粉"
+          exit 1
+        fi
+        # 中文顏色 → 英文
+        case "$3" in
+          紅|紅色) COLOR=red ;;
+          綠|綠色) COLOR=green ;;
+          藍|藍色) COLOR=blue ;;
+          橙|橙色) COLOR=orange ;;
+          黃|黃色) COLOR=yellow ;;
+          紫|紫色) COLOR=purple ;;
+          粉|粉色|粉紅) COLOR=pink ;;
+          暖白) COLOR=warm_white ;;
+          冷白) COLOR=cool_white ;;
+          *) COLOR="$3" ;;  # 直接傳英文
+        esac
+        exec mcporter call tradfri.set_color "name=$NAME" "color=$COLOR"
+        ;;
       *)
         echo "未知動作: $ACTION"
-        echo "支援: 開, 關, 亮度 <值>, 色溫 暖/冷"
+        echo "支援: 開, 關, 亮度 <值>, 色溫 暖/冷, 顏色 紅/綠/藍/橙/黃/紫/粉"
         exit 1
         ;;
     esac

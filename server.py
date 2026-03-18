@@ -512,6 +512,8 @@ async def list_devices() -> str:
 
     alias_lookup: dict = {"group": {}, "device": {}}
     for alias_name, target in aliases.items():
+        if not isinstance(target, dict):
+            continue
         t = target.get("type")
         i = target.get("id")
         if t in alias_lookup and i is not None:
