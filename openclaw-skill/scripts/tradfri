@@ -65,8 +65,8 @@ case "$1" in
           exit 1
         fi
         case "$3" in
-          暖|warm) exec mcporter call tradfri.set_color_temp "name=$NAME" direction=warm ;;
-          冷|cool) exec mcporter call tradfri.set_color_temp "name=$NAME" direction=cool ;;
+          暖|warm) mcporter call tradfri.control_by_name "name=$NAME" state=true > /dev/null 2>&1; exec mcporter call tradfri.set_color_temp "name=$NAME" direction=warm ;;
+          冷|cool) mcporter call tradfri.control_by_name "name=$NAME" state=true > /dev/null 2>&1; exec mcporter call tradfri.set_color_temp "name=$NAME" direction=cool ;;
           *) echo "色溫方向：暖 或 冷"; exit 1 ;;
         esac
         ;;
@@ -88,6 +88,7 @@ case "$1" in
           冷白) COLOR=cool_white ;;
           *) COLOR="$3" ;;  # 直接傳英文
         esac
+        mcporter call tradfri.control_by_name "name=$NAME" state=true > /dev/null 2>&1
         exec mcporter call tradfri.set_color "name=$NAME" "color=$COLOR"
         ;;
       *)
